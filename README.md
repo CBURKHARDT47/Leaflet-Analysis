@@ -1,4 +1,5 @@
 # Module 15 Challenge leaflet-challenge
+![download](https://github.com/CBURKHARDT47/leaflet-challenge/assets/128064003/7bde21e7-35c4-4e45-b4dd-3ed31d8ed89d)
 
 ## Background
 The United States Geological Survey, or USGS for short, is responsible for providing scientific data about natural hazards, the health of our ecosystems and environment, and the impacts of climate and land-use change. Their scientists develop new methods and tools to supply timely, relevant, and useful information about the Earth and its processes.
