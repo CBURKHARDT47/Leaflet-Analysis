@@ -21,13 +21,23 @@ function createMap(data) {
   }
 
   // Function to determine the color of the marker based on depth
-  function getMarkerColor(depth) {
-    // You can use any logic to assign colors based on depth
-    // Here, we are using a linear scale from blue to red
-    const normalizedDepth = depth / 700; // Assuming depths range from 0 to 700 km
-    const hue = (1 - normalizedDepth) * 240; // Map depth to hue value from 0 (blue) to 240 (red)
-    return `hsl(${hue}, 100%, 50%)`;
+  function getMarkerColor(depth) function getMarkerColor(depth) {
+  // Define your custom color scale based on depth ranges
+  if (depth >= -10 && depth < 10) {
+    return 'green'; // Depth between -10 to 10 feet (inclusive)
+  } else if (depth >= 10 && depth < 30) {
+    return 'yellow'; // Depth between 10 to 30 feet (inclusive)
+  } else if (depth >= 30 && depth < 50) {
+    return 'orange'; // Depth between 30 to 50 feet (inclusive)
+  } else if (depth >= 50 && depth < 70) {
+    return 'red'; // Depth between 50 to 70 feet (inclusive)
+  } else if (depth >= 70 && depth < 90) {
+    return 'purple'; // Depth between 70 to 90 feet (inclusive)
+  } else {
+    return 'blue'; // Depth greater than 90 feet
   }
+}
+
 
   // Create markers and popups for each earthquake
   data.features.forEach(feature => {
