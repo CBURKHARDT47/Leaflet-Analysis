@@ -1,136 +1,72 @@
-//store the URL for the GeoJSON data
-const url = 'https://earthquake.usgs.gov/earthquakes/feed/v1.0/summary/all_week.geojson';
-
-// Add a Leaflet tile layer.
-let streets = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-    attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-});
-
-// Create a Leaflet map object.
-var myMap = L.map("map", {
-    center: [37.09, -95.71],
-    zoom: 3,
-    layers: [streets]
-});
+// Replace 'your_json_url' with the URL to your earthquake JSON data
+const jsonUrl = 'https://earthquake.usgs.gov/earthquakes/feed/v1.0/summary/all_week.geojson';
 
 
-//define basemaps as the streetmap
-let baseMaps = {
-    "streets": streets
-};
+fetch(jsonUrl)
+  .then(response => response.json())
+  .then(data => createMap(data));
+  console.log(data)
 
-//define the earthquake layergroup and tectonic plate layergroups for the map
-let earthquake_data = new L.LayerGroup();
-let tectonics = new L.LayerGroup();
+function createMap(data) {
+  const map = L.map('map').setView([0, 0], 2);
 
-//define the overlays and link the layergroups to separate overlays
-let overlays = {
-    "Earthquakes": earthquake_data,
-    "Tectonic Plates": tectonics
-};
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    attribution: '&copy; OpenStreetMap contributors'
+  }).addTo(map);
 
-//add a control layer and pass in baseMaps and overlays
-L.control.layers(baseMaps, overlays).addTo(myMap);
+  // Function to determine the size of the marker based on magnitude
+  function getMarkerSize(magnitude) {
+    // You can use any logic to scale the marker size based on magnitude
+    return Math.sqrt(magnitude) * 5;
+  }
 
-//this styleInfo function will dictate the stying for all of the earthquake points on the map
-function styleInfo(feature) {
-    return {
-        color: chooseColor(feature.geometry.coordinates[2]),
-        radius: chooseRadius(feature.properties.mag), //sets radius based on magnitude 
-        fillColor: chooseColor(feature.geometry.coordinates[2]) //sets fillColor based on the depth of the earthquake
-    }
-};
+  // Function to determine the color of the marker based on depth
+  function getMarkerColor(depth) {
+    // You can use any logic to assign colors based on depth
+    // Here, we are using a linear scale from blue to red
+    const normalizedDepth = depth / 700; // Assuming depths range from 0 to 700 km
+    const hue = (1 - normalizedDepth) * 240; // Map depth to hue value from 0 (blue) to 240 (red)
+    return `hsl(${hue}, 100%, 50%)`;
+  }
 
-//define a function to choose the fillColor of the earthquake based on earthquake depth
-function chooseColor(depth) {
-    if (depth <= 10) return "red";
-    else if (depth > 10 & depth <= 25) return "orange";
-    else if (depth > 25 & depth <= 40) return "yellow";
-    else if (depth > 40 & depth <= 55) return "pink";
-    else if (depth > 55 & depth <= 70) return "blue";
-    else return "green";
-};
+  // Create markers and popups for each earthquake
+  data.features.forEach(feature => {
+    const { geometry, properties } = feature;
+    const { coordinates } = geometry;
+    const [longitude, latitude, depth] = coordinates;
+    const { mag } = properties;
 
-//define a function to determine the radius of each earthquake marker
-function chooseRadius(magnitude) {
-    return magnitude*5;
-};
+    const marker = L.circleMarker([latitude, longitude], {
+      radius: getMarkerSize(mag),
+      fillColor: getMarkerColor(depth),
+      color: '#000',
+      weight: 1,
+      opacity: 1,
+      fillOpacity: 0.8
+    }).addTo(map);
 
-//OLD chooseRadius() function format - I realized that you can just multply magnitude by a scalar after I had walked through this
-// function chooseRadius(magnitude) {
-//     if (magnitude <= 1) return 5;
-//     else if (magnitude > 1 & magnitude <= 2) return 10;
-//     else if (magnitude > 2 & magnitude <= 3) return 15;
-//     else if (magnitude > 3 & magnitude <= 4) return 20;
-//     else if (magnitude > 4 & magnitude <= 5) return 25;
-//     else if (magnitude > 5 & magnitude <= 6) return 30;
-//     else if (magnitude > 6 & magnitude <= 7) return 35;
-//     else if (magnitude > 7 & magnitude <= 8) return 40;
-//     else return 45; //greater than mag 7 will show up as radius 70
-// };
+    // Create a popup with additional information
+    const popupContent = `
+      <b>Magnitude:</b> ${mag}<br>
+      <b>Depth:</b> ${depth} km<br>
+      <b>Latitude:</b> ${latitude}<br>
+      <b>Longitude:</b> ${longitude}
+    `;
+    marker.bindPopup(popupContent);
+  });
 
-//
-d3.json(url).then(function (data) { //pull the earthquake JSON data with d3
-    L.geoJson(data, {
-        pointToLayer: function (feature, latlon) {  //declare a point to layer function that takes a feature and latlon
-            return L.circleMarker(latlon).bindPopup(feature.id); //function creates a circleMarker at latlon and binds a popup with the earthquake id
-        },
-        style: styleInfo //style the CircleMarker with the styleInfo function as defined above
-    }).addTo(earthquake_data); // add the earthquake data to the earthquake_data layergroup / overlay
-    earthquake_data.addTo(myMap);
-
-    //this function pulls the tectonic plate data and draws a purple line over the plates
-    d3.json("https://raw.githubusercontent.com/fraxen/tectonicplates/master/GeoJSON/PB2002_boundaries.json").then(function (data) { //pulls tectonic data with d3.json
-        L.geoJson(data, {
-            color: "purple",  //sets the line color to purple
-            weight: 3
-        }).addTo(tectonics); //add the tectonic data to the tectonic layergroup / overlay
-        tectonics.addTo(myMap);
-    });
-
-
-});
-//create legend, credit to this website for the structure: https://codepen.io/haakseth/pen/KQbjdO -- this structure is referenced in style.css
-var legend = L.control({ position: "bottomright" });
-legend.onAdd = function(myMap) {
-    var div = L.DomUtil.create("div", "legend");
-       div.innerHTML += "<h4>Depth Color Legend</h4>";
-       div.innerHTML += '<i style="background: red"></i><span>(Depth < 10)</span><br>';
-       div.innerHTML += '<i style="background: orange"></i><span>(10 < Depth <= 25)</span><br>';
-       div.innerHTML += '<i style="background: yellow"></i><span>(25 < Depth <= 40)</span><br>';
-       div.innerHTML += '<i style="background: pink"></i><span>(40 < Depth <= 55)</span><br>';
-       div.innerHTML += '<i style="background: blue"></i><span>(55 < Depth <= 70)</span><br>';
-       div.innerHTML += '<i style="background: green"></i><span>(Depth > 70)</span><br>';
-  
+  // Add a legend to the map
+  const legend = L.control({ position: 'bottomright' });
+  legend.onAdd = function () {
+    const div = L.DomUtil.create('div', 'info legend');
+    // Define your legend content here (e.g., depth ranges and corresponding colors)
+    const legendContent = `
+      <strong>Depth Legend</strong><br>
+      <i style="background: ${getMarkerColor(0)}"></i> Depth &lt; 100 km<br>
+      <i style="background: ${getMarkerColor(100)}"></i> Depth &ge; 100 km
+    `;
+    div.innerHTML = legendContent;
     return div;
   };
-  //add the legend to the map
-  legend.addTo(myMap);
-
-//scratch work for collecting the necessary  and console logging
-//collect data with d3
-d3.json(url).then(function (data) {
-    console.log(data);
-    let features = data.features;
-    console.log(features);
-
-    let results = features.filter(id => id.id == "nc73872510"); //replace the id string with the argument of the function once created
-    let first_result = results[0];
-    console.log(first_result);
-    let geometry = first_result.geometry;
-    console.log(geometry);
-    let coordinates = geometry.coordinates;
-    console.log(coordinates);
-    console.log(coordinates[0]); // longitude
-    console.log(coordinates[1]); // latitude
-    console.log(coordinates[2]); // depth of earthquake
-    let magnitude = first_result.properties.mag;
-    console.log(magnitude);
-    //define depth variable
-    let depth = geometry.coordinates[2];
-    console.log(depth);
-    let id = first_result.id;
-    console.log(id);
-
-});
-});
+  legend.addTo(map);
+}
